@@ -193,6 +193,9 @@ public partial class MainWindowViewModel : ViewModelBase
     private bool _cwSettingsVisible = true;  // Control CW settings visibility
 
     [ObservableProperty]
+    private bool _cwSettingsExpanded;  // CW Settings expander state (collapsed by default)
+
+    [ObservableProperty]
     private string _leftPaddleLabelText = "Left Paddle";  // Dynamic left label
 
     [ObservableProperty]
@@ -313,6 +316,11 @@ public partial class MainWindowViewModel : ViewModelBase
             RefreshSerialPorts();
             RefreshMidiDevices();
             RefreshAudioDevices();
+        }
+        else if (value == PageType.Operating)
+        {
+            // CW Settings is minimized by default each time we enter the operating page.
+            CwSettingsExpanded = false;
         }
     }
 
@@ -1215,7 +1223,75 @@ public partial class MainWindowViewModel : ViewModelBase
         _sidetoneGenerator?.Dispose();
 
         API.CloseSession();
+
+        // Persist window geometry (kept current in memory by the view) before exiting.
+        _settings.Save();
         Environment.Exit(0);
+    }
+
+    // --- Window geometry persistence (called by the MainWindow view) ---
+
+    public bool SavedWindowMaximized => _settings.WindowMaximized;
+
+    /// <summary>Per-page saved width (null if none stored yet).</summary>
+    public double? GetPageWidth(bool operating) =>
+        operating ? _settings.OperatingWindowWidth : _settings.SetupWindowWidth;
+
+    /// <summary>Per-page saved position (null if none stored yet).</summary>
+    public int? GetPageLeft(bool operating) =>
+        operating ? _settings.OperatingWindowLeft : _settings.SetupWindowLeft;
+    public int? GetPageTop(bool operating) =>
+        operating ? _settings.OperatingWindowTop : _settings.SetupWindowTop;
+
+    /// <summary>Stores a single page's width in memory (no disk write).</summary>
+    public void StorePageWidth(bool operating, double width)
+    {
+        if (operating) _settings.OperatingWindowWidth = width;
+        else _settings.SetupWindowWidth = width;
+    }
+
+    /// <summary>Stores a single page's position in memory (no disk write).</summary>
+    public void StorePagePosition(bool operating, int left, int top)
+    {
+        if (operating) { _settings.OperatingWindowLeft = left; _settings.OperatingWindowTop = top; }
+        else { _settings.SetupWindowLeft = left; _settings.SetupWindowTop = top; }
+    }
+
+    /// <summary>Stores the shared maximized state in memory (no disk write).</summary>
+    public void StoreMaximized(bool maximized) => _settings.WindowMaximized = maximized;
+
+    /// <summary>Persists settings (including window geometry) to disk.</summary>
+    public void SaveSettings() => _settings.Save();
+
+    // Status-bar text: "Nickname : Station" (Station from the connected selection), or just
+    // "Nickname" when there's no GUI client/station. Kept minimal to avoid clutter.
+    private string BuildConnectedRadioDisplay()
+    {
+        if (_connectedRadio == null) return "";
+        var station = SelectedRadioClient?.GuiClient?.Station;
+        return string.IsNullOrWhiteSpace(station)
+            ? _connectedRadio.Nickname
+            : $"{_connectedRadio.Nickname} : {station}";
+    }
+
+    /// <summary>Raised when the user invokes Reset Windows; the view restores the default size.</summary>
+    public event EventHandler ResetWindowRequested;
+
+    [RelayCommand]
+    private void ResetWindows()
+    {
+        // Remove persisted window geometry so both pages fall back to defaults.
+        _settings.SetupWindowWidth = null;
+        _settings.OperatingWindowWidth = null;
+        _settings.SetupWindowLeft = null;
+        _settings.SetupWindowTop = null;
+        _settings.OperatingWindowLeft = null;
+        _settings.OperatingWindowTop = null;
+        _settings.WindowMaximized = false;
+        _settings.Save();
+
+        // Let the view restore the live window to the default (system-style) size/position.
+        ResetWindowRequested?.Invoke(this, EventArgs.Empty);
     }
 
     [RelayCommand]
@@ -1422,7 +1498,7 @@ public partial class MainWindowViewModel : ViewModelBase
             string radioMode = txSlice?.DemodMode?.ToUpper() ?? "Unknown";
             modeStr = $"{radioMode} (PTT)";
 
-            ConnectedRadioDisplay = $"{_connectedRadio.Nickname} ({_connectedRadio.Model})";
+            ConnectedRadioDisplay = BuildConnectedRadioDisplay();
             LeftPaddleLabelText = "PTT";
             RightPaddleVisible = false;
             CwSettingsVisible = false;
@@ -1431,7 +1507,7 @@ public partial class MainWindowViewModel : ViewModelBase
         else
         {
             // CW mode
-            ConnectedRadioDisplay = $"{_connectedRadio.Nickname} ({_connectedRadio.Model})";
+            ConnectedRadioDisplay = BuildConnectedRadioDisplay();
 
             if (IsIambicMode)
             {

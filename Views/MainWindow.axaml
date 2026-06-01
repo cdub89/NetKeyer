@@ -7,8 +7,10 @@
         x:Class="NetKeyer.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="NetKeyer - FlexRadio CW Keyer"
-        Width="600" Height="640"
-        MinWidth="500" MinHeight="540">
+        Width="480"
+        MinWidth="450"
+        SizeToContent="Height"
+        MaxHeight="900">
 
     <Design.DataContext>
         <vm:MainWindowViewModel/>
@@ -23,6 +25,8 @@
             <MenuItem Header="_Settings">
                 <MenuItem Header="_Audio Output Device..." Command="{Binding SelectAudioDeviceCommand}"/>
                 <MenuItem Header="_MIDI Note Mapping..." Command="{Binding ConfigureMidiNotesCommand}"/>
+                <Separator/>
+                <MenuItem Header="_Reset Windows" Command="{Binding ResetWindowsCommand}"/>
             </MenuItem>
             <MenuItem Header="_Help">
                 <MenuItem Header="_Documentation" Command="{Binding OpenDocumentationCommand}"/>
@@ -116,18 +120,20 @@
                         <StackPanel Spacing="6">
                             <TextBlock Text="Radio Selection" FontWeight="Bold" FontSize="14"/>
 
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <ComboBox Name="RadioComboBox"
+                            <Grid ColumnDefinitions="*,Auto">
+                                <ComboBox Grid.Column="0"
+                                          Name="RadioComboBox"
                                           ItemsSource="{Binding RadioClientSelections}"
                                           SelectedItem="{Binding SelectedRadioClient}"
-                                          Width="450"
                                           PlaceholderText="Select a radio and station..."/>
-                                <Button Content="Refresh"
+                                <Button Grid.Column="1"
+                                        Content="Refresh"
                                         Command="{Binding RefreshRadiosCommand}"
                                         Width="70"
+                                        Margin="6,0,0,0"
                                         HorizontalContentAlignment="Center"
                                         Padding="4"/>
-                            </StackPanel>
+                            </Grid>
 
                             <!-- Status - only shown on error -->
                             <TextBlock Text="{Binding RadioStatus}"
@@ -159,56 +165,65 @@
 
                             <!-- Serial Port Settings -->
                             <StackPanel Spacing="6" IsVisible="{Binding IsSerialInput}">
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <TextBlock Text="Port:" VerticalAlignment="Center" Width="110"/>
-                                    <ComboBox ItemsSource="{Binding SerialPorts}"
+                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                    <TextBlock Grid.Column="0" Text="Port:" VerticalAlignment="Center" Width="110"/>
+                                    <ComboBox Grid.Column="1"
+                                              ItemsSource="{Binding SerialPorts}"
                                               SelectedItem="{Binding SelectedSerialPort}"
-                                              Width="280"
+                                              Margin="0,0,6,0"
                                               PlaceholderText="Select a port..."/>
-                                    <Button Content="Refresh"
+                                    <Button Grid.Column="2"
+                                            Content="Refresh"
                                             Command="{Binding RefreshSerialPortsCommand}"
                                             Width="70"
                                             HorizontalContentAlignment="Center"
                                             Padding="4"/>
-                                </StackPanel>
+                                </Grid>
                             </StackPanel>
 
                             <!-- MIDI Device Settings -->
                             <StackPanel Spacing="6" IsVisible="{Binding IsMidiInput}">
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <TextBlock Text="MIDI Device:" VerticalAlignment="Center" Width="100"/>
-                                    <ComboBox ItemsSource="{Binding MidiDevices}"
+                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                    <TextBlock Grid.Column="0" Text="MIDI Device:" VerticalAlignment="Center" Width="100"/>
+                                    <ComboBox Grid.Column="1"
+                                              ItemsSource="{Binding MidiDevices}"
                                               SelectedItem="{Binding SelectedMidiDevice}"
-                                              Width="280"
+                                              Margin="0,0,6,0"
                                               PlaceholderText="Select a MIDI device..."/>
-                                    <Button Content="Refresh"
+                                    <Button Grid.Column="2"
+                                            Content="Refresh"
                                             Command="{Binding RefreshMidiDevicesCommand}"
                                             Width="70"
                                             HorizontalContentAlignment="Center"
                                             Padding="4"/>
-                                </StackPanel>
+                                </Grid>
                             </StackPanel>
                         </StackPanel>
                     </Border>
 
-                    <!-- Connect Button -->
-                    <Button Content="Connect"
-                            Command="{Binding ToggleConnectionCommand}"
-                            HorizontalAlignment="Center"
-                            HorizontalContentAlignment="Center"
-                            Width="120"
-                            Padding="6"
-                            Margin="0,5,0,0"/>
+                    <!-- Connect / Exit Buttons -->
+                    <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center" Margin="0,5,0,0">
+                        <Button Content="Connect"
+                                Command="{Binding ToggleConnectionCommand}"
+                                HorizontalContentAlignment="Center"
+                                Width="120"
+                                Padding="6"/>
+                        <Button Content="Exit"
+                                Command="{Binding ExitCommand}"
+                                HorizontalContentAlignment="Center"
+                                Width="100"
+                                Padding="6"/>
+                    </StackPanel>
                 </StackPanel>
 
                 <!-- Operating Page -->
                 <StackPanel Spacing="8" IsVisible="{Binding IsOperatingPage}">
 
-                    <!-- CW Settings Section -->
-                    <Border BorderBrush="Gray" BorderThickness="1" Padding="8" CornerRadius="3"
-                            IsVisible="{Binding CwSettingsVisible}">
+                    <!-- CW Settings (collapsible; hidden by default after connecting to a radio) -->
+                    <Expander Header="CW Settings"
+                              HorizontalAlignment="Stretch"
+                              IsExpanded="{Binding CwSettingsExpanded, Mode=TwoWay}">
                         <StackPanel Spacing="6">
-                            <TextBlock Text="CW Settings" FontWeight="Bold" FontSize="14"/>
 
                             <!-- Speed -->
                             <StackPanel Orientation="Horizontal" Spacing="6">
@@ -280,7 +295,7 @@
                                       IsChecked="{Binding SwapPaddles}"
                                       Padding="2"/>
                         </StackPanel>
-                    </Border>
+                    </Expander>
 
                     <!-- Disconnect and Exit Buttons -->
                     <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center" Margin="0,5,0,0">
@@ -296,16 +311,6 @@
                                 Padding="6"/>
                     </StackPanel>
                 </StackPanel>
-
-                <!-- Exit Button (Setup page only) -->
-                <Button Content="Exit"
-                        Command="{Binding ExitCommand}"
-                        IsVisible="{Binding IsSetupPage}"
-                        HorizontalAlignment="Center"
-                        HorizontalContentAlignment="Center"
-                        Width="100"
-                        Padding="6"
-                        Margin="0,5,0,0"/>
 
             </StackPanel>
         </ScrollViewer>

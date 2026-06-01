@@ -25,6 +25,17 @@ namespace NetKeyer.Models
         // Keep audio device awake by playing near-silent audio
         public bool KeepAudioDeviceAwake { get; set; } = false;
 
+        // Window geometry. Width and position are remembered per page (Setup vs Operating) so
+        // each page keeps its own size and location; maximized state is shared. Height is not
+        // stored because the window auto-sizes to content (SizeToContent="Height").
+        public double? SetupWindowWidth { get; set; }
+        public double? OperatingWindowWidth { get; set; }
+        public int? SetupWindowLeft { get; set; }
+        public int? SetupWindowTop { get; set; }
+        public int? OperatingWindowLeft { get; set; }
+        public int? OperatingWindowTop { get; set; }
+        public bool WindowMaximized { get; set; }
+
         // MIDI note mappings
         public List<MidiNoteMapping> MidiNoteMappings { get; set; }
 
